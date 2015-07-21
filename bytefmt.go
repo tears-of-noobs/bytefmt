@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	b  = int64(1)
+	b  = float64(1)
 	kb = 1024 * b
 	mb = 1024 * kb
 	gb = 1024 * mb
@@ -17,21 +17,35 @@ const (
 )
 
 // Convert raw string 1B, 1K, 1Kb ... to byte
-func HumanToByte(rawString string) (int64, error) {
-	var bytes int64
-	pattern := regexp.MustCompile(`^([0-9]+)([KMGT])?(B|b)?$`)
-	tokens := pattern.FindStringSubmatch(rawString)
+func ParseString(rawString string) (float64, error) {
+	var rawValue string
+	var bytes float64
+	rawPattern := `^([0-9]+)(\.|\,)?([0-9]+)?([KMGT])?(B|b)?$`
+	compilePattern := regexp.MustCompile(rawPattern)
+	tokens := compilePattern.FindStringSubmatch(rawString)
 	// If we passed correct raw string,
-	// FindStringSubmatch return slice with 4 elements
-	if len(tokens) != 4 {
+	// FindStringSubmatch return slice with 6 elements
+	if len(tokens) != 6 {
 		return 0, errors.New("Incorrect string value for conversion")
 	}
-	value, err := strconv.ParseInt(tokens[1], 10, 64)
+	switch {
+	case tokens[2] == "." || tokens[2] == ",":
+		if tokens[4] == "" {
+			return 0, errors.New("Incorrect string value for conversion")
+		}
+		if tokens[2] == "," {
+			tokens[2] = "."
+		}
+		rawValue = strings.Join(tokens[1:4], "")
+	default:
+		rawValue = tokens[1]
+	}
+	value, err := strconv.ParseFloat(rawValue, 64)
 	if err != nil {
 		return value, err
 	}
 
-	switch strings.ToUpper(tokens[2]) {
+	switch strings.ToUpper(tokens[4]) {
 	case "B":
 		bytes = value * b
 	case "K":
@@ -49,32 +63,33 @@ func HumanToByte(rawString string) (int64, error) {
 	return bytes, nil
 }
 
-// Convert byte to human representation value, like that
+// Convert bytes to human representation value, like that
 // 1024 - 1K or 1Kb if byteSuffix set to true
-func ByteToHuman(byteValue int64, byteSuffix bool) string {
-	value := int64(0)
-	suff := ""
+func FormatBytes(byteValue float64, prec int, byteSuffix bool) string {
+	value := float64(0)
+	suffix := ""
 
 	switch {
 	case byteValue >= tb:
-		suff = "T"
+		suffix = "T"
 		value = byteValue / tb
 	case byteValue >= gb:
-		suff = "G"
+		suffix = "G"
 		value = byteValue / gb
 	case byteValue >= mb:
-		suff = "M"
+		suffix = "M"
 		value = byteValue / mb
 	case byteValue >= kb:
-		suff = "K"
+		suffix = "K"
 		value = byteValue / kb
 	case byteValue >= b:
 		byteSuffix = false
-		suff = "B"
+		suffix = "B"
 		value = byteValue
 	}
 
-	strValue := fmt.Sprintf("%s%s", strconv.FormatInt(value, 10), suff)
+	strValue := fmt.Sprintf("%s%s",
+		strconv.FormatFloat(value, 'f', prec, 64), suffix)
 	if byteSuffix {
 		strValue += "b"
 	}
