@@ -9,23 +9,30 @@ import (
 )
 
 const (
-	b  = float64(1)
-	kb = 1024 * b
-	mb = 1024 * kb
-	gb = 1024 * mb
-	tb = 1024 * gb
+	b   = float64(1)
+	kib = 1024 * b
+	mib = 1024 * kib
+	gib = 1024 * mib
+	tib = 1024 * gib
+
+	kb = 1000 * b
+	mb = 1000 * kb
+	gb = 1000 * mb
+	tb = 1000 * gb
 )
 
-// Convert raw string 1B, 1K, 1Kb ... to byte
+// Convert raw string 1B, 1kB, 10MB, 45GiB ... to byte
 func ParseString(rawString string) (float64, error) {
 	var rawValue string
 	var bytes float64
-	rawPattern := `^([0-9]+)(\.|\,)?([0-9]+)?([KMGT])?(B|b)?$`
+	binaryValue := false
+
+	rawPattern := `^([0-9]+)(\.|\,)?([0-9]+)?([(k|K)MGT])?(i)?(B|b)?$`
 	compilePattern := regexp.MustCompile(rawPattern)
 	tokens := compilePattern.FindStringSubmatch(rawString)
 	// If we passed correct raw string,
-	// FindStringSubmatch return slice with 6 elements
-	if len(tokens) != 6 {
+	// FindStringSubmatch return slice with 7 elements
+	if len(tokens) != 7 {
 		return 0, errors.New("Incorrect string value for conversion")
 	}
 	switch {
@@ -45,17 +52,33 @@ func ParseString(rawString string) (float64, error) {
 		return value, err
 	}
 
+	if tokens[5] == "i" {
+		binaryValue = true
+	}
+
 	switch strings.ToUpper(tokens[4]) {
 	case "B":
 		bytes = value * b
 	case "K":
 		bytes = value * kb
+		if binaryValue {
+			bytes = value * kib
+		}
 	case "M":
 		bytes = value * mb
+		if binaryValue {
+			bytes = value * mib
+		}
 	case "G":
 		bytes = value * gb
+		if binaryValue {
+			bytes = value * gib
+		}
 	case "T":
 		bytes = value * tb
+		if binaryValue {
+			bytes = value * tib
+		}
 	default:
 		bytes = value * b
 	}
@@ -64,34 +87,51 @@ func ParseString(rawString string) (float64, error) {
 }
 
 // Convert bytes to human representation value, like that
-// 1024 - 1K or 1Kb if byteSuffix set to true
-func FormatBytes(byteValue float64, prec int, byteSuffix bool) string {
+// 1024 - 1.02kB if binary is false or 1KiB when it true
+func FormatBytes(byteValue float64, prec int, binary bool) string {
 	value := float64(0)
 	suffix := ""
 
-	switch {
-	case byteValue >= tb:
-		suffix = "T"
-		value = byteValue / tb
-	case byteValue >= gb:
-		suffix = "G"
-		value = byteValue / gb
-	case byteValue >= mb:
-		suffix = "M"
-		value = byteValue / mb
-	case byteValue >= kb:
-		suffix = "K"
-		value = byteValue / kb
-	case byteValue >= b:
-		byteSuffix = false
-		suffix = "B"
-		value = byteValue
+	if binary {
+		switch {
+		case byteValue >= tib:
+			suffix = "TiB"
+			value = byteValue / tib
+		case byteValue >= gib:
+			suffix = "GiB"
+			value = byteValue / gib
+		case byteValue >= mib:
+			suffix = "MiB"
+			value = byteValue / mib
+		case byteValue >= kib:
+			suffix = "KiB"
+			value = byteValue / kib
+		case byteValue >= b:
+			suffix = "B"
+			value = byteValue
+		}
+	} else {
+
+		switch {
+		case byteValue >= tb:
+			suffix = "TB"
+			value = byteValue / tb
+		case byteValue >= gb:
+			suffix = "GB"
+			value = byteValue / gb
+		case byteValue >= mb:
+			suffix = "MB"
+			value = byteValue / mb
+		case byteValue >= kb:
+			suffix = "kB"
+			value = byteValue / kb
+		case byteValue >= b:
+			suffix = "B"
+			value = byteValue
+		}
 	}
 
 	strValue := fmt.Sprintf("%s%s",
 		strconv.FormatFloat(value, 'f', prec, 64), suffix)
-	if byteSuffix {
-		strValue += "b"
-	}
 	return strValue
 }
