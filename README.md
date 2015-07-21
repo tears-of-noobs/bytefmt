@@ -21,8 +21,8 @@ import (
 func main() {
     // Parsing string. 
     // You also may pass argument in different format.
-    // ParseString understand - "1,5Tb", "1.5Tb", "1.5T", "123534"
-    byteResult, err := bytefmt.ParseString("5.67Gb")
+    // ParseString understand - "1,5TB", "1.5TB", "1.5TiB", "123534"
+    byteResult, err := bytefmt.ParseString("5.67GiB")
     if err != nil {
         panic(err)
     }
@@ -32,7 +32,8 @@ func main() {
     // Formatting bytes
     stringResult := bytefmt.FormatBytes(byteResult, 2, true)
     
-    //Output - "5.67Gb"
+    // Output - "5.67GiB"
+    // If you pass binary to false you will get - "6.09GB"
     fmt.Printf("%s\n", stringResult)
 }
 ```
